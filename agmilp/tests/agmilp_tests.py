@@ -1,6 +1,7 @@
 from __future__ import division, absolute_import, print_function
 
 import logging
+import os
 import unittest
 
 import numpy as np
@@ -9,6 +10,8 @@ from femformal.core import system as sys
 from stlmilp import stl
 
 from agmilp import agmilp, plot
+
+FOCUSED = os.environ.get('FOCUSED', False)
 
 def integrate_trapez(system, x0, args):
     x = sys.trapez_integrate(system, x0, args[0], args[1], log=False)
@@ -53,8 +56,9 @@ class TestAGMilp(unittest.TestCase):
             ], [2, 4])
         ])
         args = [10.0, self.sys.dt]
-        plotter=plot.PlotAssumptionMinining([[-10, 10], [-10, 10]])
+        plotter = plot.PlotAssumptionMinining([[-10, 10], [-10, 10]])
         plotter.set_interactive()
+        plotter = None
         formula = agmilp.mine_assumptions(
             self.sys, self.bounds, formula, self.integrate, args,
             tol_min=1.0, tol_init=2.0, alpha=0.5, num_init_samples=10,
@@ -62,6 +66,7 @@ class TestAGMilp(unittest.TestCase):
         )
         print(formula)
 
+    @unittest.skipUnless(FOCUSED, "Slow test")
     def test_agmilp_simple2(self):
         isstate = True
         system_n = 2
@@ -82,7 +87,7 @@ class TestAGMilp(unittest.TestCase):
         plotter.set_interactive()
         formula = agmilp.mine_assumptions(
             self.sys2, self.bounds, formula, self.integrate, args,
-            tol_min=0.25, tol_init=1.0, alpha=0.5, num_init_samples=200,
+            tol_min=0.5, tol_init=1.0, alpha=0.5, num_init_samples=200,
             plotter = plotter
         )
         print(formula)

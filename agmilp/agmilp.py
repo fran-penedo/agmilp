@@ -111,6 +111,8 @@ class MILPSignal(stl.Signal):
             self.labels = [lambda t: milp_encode.label('d', index, t)]
         else:
             #FIXME add correct index
+            logger.debug("Non-state signal")
+            raise NotImplementedError()
             self.labels = [lambda t: milp_encode.label('f', 0, t)]
         self.f = lambda vs: -op * f(vs[0])
         self.op = op
@@ -174,7 +176,7 @@ def _min_max_robustness(system, bounds, formula, x_init_form, tol, obj):
     xs_milp = []
     m = stl_milp.build_and_solve(
         formula, _encode(system, bounds, xs_milp, x_init_form, tol), obj,
-        log_files=False, outputflag=0)
+        log_files=True, outputflag=0)
     if m.status == stl_milp.GRB.status.INFEASIBLE:
         logger.warning("MILP infeasible, logging IIS")
         m.computeIIS()
@@ -218,8 +220,9 @@ def _encode(system, bounds, xs_milp, x_init_form, tol):
                     m.addConstr(x[milp_encode.label('f', i, j)] ==
                                 system.control_f(j * system.dt, pf, i))
         else:
-            for j in range(hd):
-                m.addConstr(x[milp_encode.label('f', i, j)] == 0)
+            for i in range(system.n):
+                for j in range(hd):
+                    m.addConstr(x[milp_encode.label('f', i, j)] == 0)
         fvar, vbds = stl_milp.add_stl_constr(m, "init", x_init_form)
         m.addConstr(fvar >= tol)
         return x
