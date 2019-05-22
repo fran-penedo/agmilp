@@ -39,23 +39,29 @@ def mine_assumptions(system, bounds, formula, integrate, args,
     lltinf = inference.LLTInf(
         0, primitive_factory=llt.make_llt_d1_primitives,
         stop_condition=[inference.perfect_stop],
-        redo_after_failed=50, optimizer_args={'maxiter': 10})
+        redo_after_failed=50, optimizer_args={'maxiter': 10},
+        times=np.arange(0, args[0] + 0.0001, system.dt))
     logger.debug("Starting directed sampling with tol = {}".format(tol_cur))
     while tol_cur >= tol_min:
         if nsamples % 20 == 0:
             logger.debug("Current number of samples = {}".format(nsamples))
         traces = inference.Traces(signals, labels)
-        lltinf.fit_partial(traces, disp=True)
+        lltinf.fit_partial(traces, disp=False)
         for sig, lab in lltinf.tree.traces.zipped():
             assert lltinf.predict([sig])[0] == lab
 
-        sat_for = lltform_to_milpform(lltinf.get_formula(), [0], system.n)
+        # FIXME args[0] == T, find other way of getting this
+        sat_for = lltform_to_milpform(
+            lltinf.get_formula(),
+            np.arange(0, args[0] + 0.001, system.dt), system.n)
+        logger.debug(sat_for)
         if plotter:
             plotter.plot_step(lltinf.tree.traces, sat_for)
 
         opt_res = _min_robustness(system, bounds, formula, sat_for, tol_cur)
         if opt_res.f < 0:
             # logger.debug("Adding negative sample")
+            logger.debug(opt_res)
             assert lltinf.predict([opt_res.x])[0] == 1
             signals = [opt_res.x]
             labels = [-1]
@@ -64,6 +70,7 @@ def mine_assumptions(system, bounds, formula, integrate, args,
             unsat_for = stl.Formula(stl.NOT, [sat_for])
             opt_res = _max_robustness(system, bounds, formula, unsat_for, tol_cur)
             if opt_res.f >= 0:
+                logger.debug(opt_res)
                 assert lltinf.predict([opt_res.x])[0] == -1
                 # logger.debug("Adding positive sample")
                 signals = [opt_res.x]
@@ -111,9 +118,7 @@ class MILPSignal(stl.Signal):
             self.labels = [lambda t: milp_encode.label('d', index, t)]
         else:
             #FIXME add correct index
-            logger.debug("Non-state signal")
-            raise NotImplementedError()
-            self.labels = [lambda t: milp_encode.label('f', 0, t)]
+            self.labels = [lambda t: milp_encode.label('f', index, t)]
         self.f = lambda vs: -op * f(vs[0])
         self.op = op
         self.index = index
@@ -135,15 +140,27 @@ class MILPSignal(stl.Signal):
         return sig
 
     def __str__(self):
-        return "{}_{:d} {} {:.2f}".format("x" if self.isstate else 'f', self.index, "<=" if self.op == 1 else ">", -self.f([0]))
+        return "{}_{:d} {} {:.2f}".format(
+            "x" if self.isstate else 'f',
+            self.index, "<=" if self.op == 1 else ">",
+            self.f([0]))
 
 
 def lltform_to_milpform(form, t, system_n):
     bounds = [bisect_right(t, b) - 1 for b in form.bounds]
+
     if form.op == stl.EXPR:
         args = [MILPSignal.from_lltsignal(form.args[0], system_n)]
     else:
         args = [lltform_to_milpform(arg, t, system_n) for arg in form.args]
+
+    # FIXME This is horrible and won't work with depth 2 formulas.
+    # I should probably support different time series for each variable in
+    # lltinf, but it involves quite a bit of work
+    if form.args[0].op == stl.EXPR:
+        if args[0].args[0].isstate:
+            bounds = [0, 0]
+
     return stl.Formula(form.op, args, bounds)
 
 
@@ -210,10 +227,14 @@ def _encode(system, bounds, xs_milp, x_init_form, tol):
 
 
         if hasattr(system, 'control_f'):
-            pf = [m.addVar(obj=0, lb=-milp_encode.g.GRB.INFINITY,
-                        ub=milp_encode.g.GRB.INFINITY,
-                        name=milp_encode.label('pf', i, 0))
-                  for i in range(len(bounds[0]) - system.n)]
+            pf = []
+            for i in range(len(bounds[0]) - system.n):
+                pf.append(m.addVar(obj=0, lb=-milp_encode.g.GRB.INFINITY,
+                            ub=milp_encode.g.GRB.INFINITY,
+                            name=milp_encode.label('pf', i, 0)))
+                m.addConstr(pf[-1] >= bounds[0][i + system.n])
+                m.addConstr(pf[-1] <= bounds[1][i + system.n])
+
             xs_milp.append(pf)
             for i in range(system.n):
                 for j in range(hd):

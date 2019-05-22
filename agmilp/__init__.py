@@ -3,6 +3,9 @@ import logging
 logger = logging.getLogger('agmilp')
 logger.addHandler(logging.NullHandler())
 
+mpl_logger = logging.getLogger('matplotlib')
+mpl_logger.setLevel(logging.WARNING)
+
 import sys
 if 'nose' in sys.modules.keys():
     import logging.config
