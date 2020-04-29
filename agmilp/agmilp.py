@@ -13,9 +13,19 @@ logger = logging.getLogger(__name__)
 
 SEED = 1
 
-def mine_assumptions(system, bounds, formula, integrate, args,
-                     tol_min=1.0, tol_init=5.0, alpha=.9, num_init_samples=1000,
-                     plotter=None):
+
+def mine_assumptions(
+    system,
+    bounds,
+    formula,
+    integrate,
+    args,
+    tol_min=1.0,
+    tol_init=5.0,
+    alpha=0.9,
+    num_init_samples=1000,
+    plotter=None,
+):
     signals = []
     labels = []
     stl.scale_time(formula, system.dt)
@@ -35,7 +45,9 @@ def mine_assumptions(system, bounds, formula, integrate, args,
 
     nsamples = len(labels)
     tol_cur = tol_init
-    lltinf = inference.LLTInf(0, stop_condition=[inference.perfect_stop], redo_after_failed=50)
+    lltinf = inference.LLTInf(
+        0, stop_condition=[inference.perfect_stop], redo_after_failed=50
+    )
     logger.debug("Starting directed sampling with tol = {}".format(tol_cur))
     while tol_cur >= tol_min:
         if nsamples % 20 == 0:
@@ -54,7 +66,7 @@ def mine_assumptions(system, bounds, formula, integrate, args,
             assert lltinf.predict([opt_res.x])[0] == 1
             signals = [opt_res.x]
             labels = [-1]
-            nsamples +=1
+            nsamples += 1
         else:
             unsat_for = stl.Formula(stl.NOT, [sat_for])
             opt_res = _max_robustness(system, bounds, formula, unsat_for, tol_cur)
@@ -63,7 +75,7 @@ def mine_assumptions(system, bounds, formula, integrate, args,
                 # logger.debug("Adding positive sample")
                 signals = [opt_res.x]
                 labels = [1]
-                nsamples +=1
+                nsamples += 1
             else:
                 tol_cur *= alpha
                 logger.debug("Reduced tolerance to tol = {}".format(tol_cur))
@@ -91,6 +103,11 @@ class MILPSignal(stl.Signal):
             self.bounds = [-1000, 1000]
         else:
             self.bounds = bounds
+        try:
+            if len(self.labels) >= 0:
+                self.get_vs = self._get_vs_list
+        except TypeError:
+            self.get_vs = self._get_vs_fun
 
     @classmethod
     def from_lltsignal(cls, lltsignal):
@@ -100,8 +117,11 @@ class MILPSignal(stl.Signal):
         return sig
 
     def __str__(self):
-        return "x_%d %s %.2f" % (self.index,
-                                 "<=" if self.op == 1 else ">", -self.f([0]))
+        return "x_%d %s %.2f" % (
+            self.index,
+            "<=" if self.op == 1 else ">",
+            -self.f([0]),
+        )
 
 
 def lltform_to_milpform(form, t):
@@ -127,32 +147,41 @@ class OptRes(dict):
     def __repr__(self):
         if self.keys():
             m = max(map(len, list(self.keys()))) + 1
-            return '\n'.join([k.rjust(m) + ': ' + repr(v)
-                              for k, v in sorted(self.items())])
+            return "\n".join(
+                [k.rjust(m) + ": " + repr(v) for k, v in sorted(self.items())]
+            )
         else:
             return self.__class__.__name__ + "()"
+
 
 def _min_max_robustness(system, bounds, formula, x_init_form, tol, obj):
     xs_milp = []
     m = stl_milp.build_and_solve(
-        formula, _encode(system, bounds, xs_milp, x_init_form, tol), obj,
-        log_files=False, outputflag=0)
+        formula,
+        _encode(system, bounds, xs_milp, x_init_form, tol),
+        obj,
+        log_files=False,
+        outputflag=0,
+    )
     if m.status == stl_milp.GRB.status.INFEASIBLE:
         logger.warning("MILP infeasible, logging IIS")
         m.computeIIS()
         m.write("out.ilp")
-        return OptRes({'x': None, 'f': obj * np.Inf})
+        return OptRes({"x": None, "f": obj * np.Inf})
     else:
-        x = [x_milp.getAttr('x') for x_milp in xs_milp]
+        x = [x_milp.getAttr("x") for x_milp in xs_milp]
         x = _prepare_x_init(x)
         f = m.getVarByName("spec").getAttr("x")
-        return OptRes({'x': x, 'f': f})
+        return OptRes({"x": x, "f": f})
+
 
 def _min_robustness(system, bounds, formula, x_init_form, tol):
     return _min_max_robustness(system, bounds, formula, x_init_form, tol, 1.0)
 
+
 def _max_robustness(system, bounds, formula, x_init_form, tol):
     return _min_max_robustness(system, bounds, formula, x_init_form, tol, -1.0)
+
 
 def _encode(system, bounds, xs_milp, x_init_form, tol):
     def encode(m, hd):
@@ -162,16 +191,18 @@ def _encode(system, bounds, xs_milp, x_init_form, tol):
             m.addConstr(x[milp_encode.label("d", i, 0)] >= bounds[0][i])
             m.addConstr(x[milp_encode.label("d", i, 0)] <= bounds[1][i])
             for j in range(hd):
-                m.addConstr(x[milp_encode.label('f', i, j)] == 0)
+                m.addConstr(x[milp_encode.label("f", i, j)] == 0)
         fvar, vbds = stl_milp.add_stl_constr(m, "init", x_init_form)
         m.addConstr(fvar >= tol)
         return x
 
     return encode
 
+
 def sample_init(bounds, num):
     np.random.seed(SEED)
     return np.random.uniform(bounds[0], bounds[1], (num, len(bounds[0])))
+
 
 def _prepare_x_init(x0):
     return np.hstack([x0, np.zeros(1)])[None].T
