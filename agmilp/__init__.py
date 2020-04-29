@@ -7,7 +7,11 @@ mpl_logger = logging.getLogger('matplotlib')
 mpl_logger.setLevel(logging.WARNING)
 
 import sys
-if 'nose' in sys.modules.keys():
+import os
+
+FOCUSED = os.environ.get('FOCUSED', False)
+
+if 'nose' in sys.modules.keys() and FOCUSED:
     import logging.config
     logging.config.dictConfig({
         'version': 1,

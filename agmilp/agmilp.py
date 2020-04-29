@@ -46,22 +46,37 @@ def mine_assumptions(system, bounds, formula, integrate, args,
         if nsamples % 20 == 0:
             logger.debug("Current number of samples = {}".format(nsamples))
         traces = inference.Traces(signals, labels)
+        if lltinf.tree is not None:
+            old_tree = lltinf.tree.deep_copy()
         lltinf.fit_partial(traces, disp=False)
         for sig, lab in lltinf.tree.traces.zipped():
-            assert lltinf.predict([sig])[0] == lab
+            if lltinf.predict([sig])[0] != lab:
+                logger.debug("Decision tree has impure leaves. Saving debug data...")
+                with open('agmilp_debug_data.pickle', 'w') as f:
+                    pickle.dump({
+                        'old_tree': old_tree,
+                        'new_tree': lltinf.tree,
+                        'cur_traces': traces,
+                        'failed_signal': sig,
+                        'failed_label': lab,
+                        'tol_cur': tol_cur,
+                        'last_opt_res_f': opt_res.f,
+                    },
+                        f)
+                    raise RuntimeError("Inference failed to produce perfect classifier")
 
         # FIXME args[0] == T, find other way of getting this
         sat_for = lltform_to_milpform(
             lltinf.get_formula(),
             np.arange(0, args[0] + 0.001, system.dt), system.n)
-        logger.debug(sat_for)
+        # logger.debug(sat_for)
         if plotter:
             plotter.plot_step(lltinf.tree.traces, sat_for)
 
         opt_res = _min_robustness(system, bounds, formula, sat_for, tol_cur)
         if opt_res.f < 0:
             # logger.debug("Adding negative sample")
-            logger.debug(opt_res)
+            # logger.debug(opt_res)
             assert lltinf.predict([opt_res.x])[0] == 1
             signals = [opt_res.x]
             labels = [-1]
@@ -70,7 +85,7 @@ def mine_assumptions(system, bounds, formula, integrate, args,
             unsat_for = stl.Formula(stl.NOT, [sat_for])
             opt_res = _max_robustness(system, bounds, formula, unsat_for, tol_cur)
             if opt_res.f >= 0:
-                logger.debug(opt_res)
+                # logger.debug(opt_res)
                 assert lltinf.predict([opt_res.x])[0] == -1
                 # logger.debug("Adding positive sample")
                 signals = [opt_res.x]
@@ -115,18 +130,28 @@ class Model(object):
 class MILPSignal(stl.Signal):
     def __init__(self, f, op, index, isstate, system_n=0, bounds=None):
         if isstate:
-            self.labels = [lambda t: milp_encode.label('d', index, t)]
+            labels = self._labels_state
         else:
-            #FIXME add correct index
-            self.labels = [lambda t: milp_encode.label('f', index, t)]
-        self.f = lambda vs: -op * f(vs[0])
+            labels = self._labels_f
+        super(MILPSignal, self).__init__(labels, self.f)
         self.op = op
+        self.fun = f
         self.index = index
         self.isstate = isstate
         if bounds is None:
             self.bounds = [-1000, 1000]
         else:
             self.bounds = bounds
+
+    def f(self, vs):
+        return -self.op * self.fun(vs[0])
+
+    def _labels_state(self, t):
+        return [milp_encode.label('d', self.index, t)]
+
+    def _labels_f(self, t):
+        #FIXME add correct index?
+        return [milp_encode.label('f', self.index, t)]
 
     @classmethod
     def from_lltsignal(cls, lltsignal, system_n):
@@ -188,17 +213,15 @@ def sample_init(bounds, num):
     np.random.seed(SEED)
     return np.random.uniform(bounds[0], bounds[1], (num, len(bounds[0])))
 
-
 def _min_max_robustness(system, bounds, formula, x_init_form, tol, obj):
     xs_milp = []
     m = stl_milp.build_and_solve(
         formula, _encode(system, bounds, xs_milp, x_init_form, tol), obj,
-        log_files=True, outputflag=0)
+        log_files=False, outputflag=0, threads=10)
     if m.status == stl_milp.GRB.status.INFEASIBLE:
         logger.warning("MILP infeasible, logging IIS")
         m.computeIIS()
         m.write("out.ilp")
-        raise Exception("MILP Infeasible")
         return OptRes({'x': None, 'f': obj * np.Inf})
     else:
         if hasattr(system, 'control_f'):
@@ -223,8 +246,6 @@ def _encode(system, bounds, xs_milp, x_init_form, tol):
             xs_milp.append(x[milp_encode.label("d", i, 0)])
             m.addConstr(x[milp_encode.label("d", i, 0)] >= bounds[0][i])
             m.addConstr(x[milp_encode.label("d", i, 0)] <= bounds[1][i])
-
-
 
         if hasattr(system, 'control_f'):
             pf = []

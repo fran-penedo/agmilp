@@ -83,8 +83,9 @@ class TestAGMilp(unittest.TestCase):
             ], [2, 4])
         ])
         args = [10.0, self.sys2.dt]
-        plotter=plot.PlotAssumptionMinining([[-10, 10], [-10, 10]])
-        plotter.set_interactive()
+        # plotter=plot.PlotAssumptionMinining([[-10, 10], [-10, 10]])
+        # plotter.set_interactive()
+        plotter = None
         formula = agmilp.mine_assumptions(
             self.sys2, self.bounds, formula, self.integrate, args,
             tol_min=0.5, tol_init=1.0, alpha=0.5, num_init_samples=200,
@@ -94,6 +95,7 @@ class TestAGMilp(unittest.TestCase):
         x = input()
         raise Exception()
 
+    @unittest.skipUnless(FOCUSED, "Slow test")
     def test_agmilp_time_variant(self):
         isstate = True
         system_n = 2
