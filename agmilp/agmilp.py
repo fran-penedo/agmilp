@@ -80,6 +80,7 @@ def mine_assumptions(
                 tol_cur *= alpha
                 logger.debug("Reduced tolerance to tol = {}".format(tol_cur))
 
+    logger.debug("Number of final samples: {}".format(nsamples))
     return sat_for
 
 
