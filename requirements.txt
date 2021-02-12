@@ -1,0 +1,15 @@
+-e .
+
+# tests
+nose
+coverage
+
+#linting
+flake8
+typing-extensions
+mypy
+
+#refactoring
+# importmagic
+# epc
+
