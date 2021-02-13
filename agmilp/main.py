@@ -3,11 +3,13 @@ import importlib
 import sys
 from argparse import Namespace
 from typing import Any, Callable, Optional, Sequence, Tuple
+import logging.config
 
 import attr
 import numpy as np
 from templogic.stlmilp import stl
 
+from agmilp import LOG_CONFIG
 from agmilp.agmine import mine_assumptions
 from agmilp.plot import PlotAssumptionMinining
 from agmilp.system.system import FOSystem
@@ -37,9 +39,13 @@ def process_options() -> Scenario:
     parser.add_argument("--alpha", metavar="a", type=float, default=0.5)
     parser.add_argument("--num-init-samples", metavar="n", type=int, default=10)
     parser.add_argument("--plot", action="store_true", default=False)
+    parser.add_argument("--verbose", "-v", action="store_true", default=False)
     parser.add_argument("scenario")
 
     options = parser.parse_args()
+
+    if options.verbose:
+        logging.config.dictConfig(LOG_CONFIG)
 
     try:
         spec = importlib.util.spec_from_file_location("module", options.scenario)
