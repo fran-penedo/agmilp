@@ -8,7 +8,7 @@ import numpy.testing as npt
 import matplotlib.pyplot as plt
 
 from templogic.stlmilp import stl
-from agmilp import agmilp, plot
+from agmilp import agmine, plot
 
 
 class TestPlot(unittest.TestCase):
@@ -19,25 +19,25 @@ class TestPlot(unittest.TestCase):
         )
 
     def test_compute_rectangles_expr(self):
-        form1 = stl.STLPred(agmilp.MILPSignal(lambda x: x - 7, 1, 0, False))
+        form1 = stl.STLPred(agmine.MILPSignal(lambda x: x - 7, 1, 0, False))
         npt.assert_array_equal(
             plot.compute_rectangles(form1)[0],
             np.array([[-np.inf, 7], [-np.inf, np.inf]]),
         )
 
-        form2 = stl.STLPred(agmilp.MILPSignal(lambda x: x - 5, 1, 1, False))
+        form2 = stl.STLPred(agmine.MILPSignal(lambda x: x - 5, 1, 1, False))
         npt.assert_array_equal(
             plot.compute_rectangles(form2)[0],
             np.array([[-np.inf, np.inf], [-np.inf, 5]]),
         )
 
-        form3 = stl.STLPred(agmilp.MILPSignal(lambda x: x - 3, -1, 1, False))
+        form3 = stl.STLPred(agmine.MILPSignal(lambda x: x - 3, -1, 1, False))
         npt.assert_array_equal(
             plot.compute_rectangles(form3)[0],
             np.array([[-np.inf, np.inf], [3, np.inf]]),
         )
 
-        form4 = stl.STLPred(agmilp.MILPSignal(lambda x: x - 10, 1, 0, False))
+        form4 = stl.STLPred(agmine.MILPSignal(lambda x: x - 10, 1, 0, False))
         npt.assert_array_equal(
             plot.compute_rectangles(form4)[0],
             np.array([[-np.inf, 10], [-np.inf, np.inf]]),
@@ -56,12 +56,12 @@ class TestPlot(unittest.TestCase):
                             [
                                 stl.Formula(
                                     stl.EXPR,
-                                    [agmilp.MILPSignal(lambda x: x - 5, -1, 0)],
+                                    [agmine.MILPSignal(lambda x: x - 5, -1, 0)],
                                 )
                             ],
                         ),
                         stl.Formula(
-                            stl.EXPR, [agmilp.MILPSignal(lambda x: x - 5, -1, 1)]
+                            stl.EXPR, [agmine.MILPSignal(lambda x: x - 5, -1, 1)]
                         ),
                     ],
                 ),
@@ -72,18 +72,18 @@ class TestPlot(unittest.TestCase):
                             stl.NOT,
                             [
                                 stl.Formula(
-                                    stl.EXPR, [agmilp.MILPSignal(lambda x: x - 7, 1, 0)]
+                                    stl.EXPR, [agmine.MILPSignal(lambda x: x - 7, 1, 0)]
                                 )
                             ],
                         ),
                         stl.Formula(
-                            stl.EXPR, [agmilp.MILPSignal(lambda x: x - 5, 1, 1)]
+                            stl.EXPR, [agmine.MILPSignal(lambda x: x - 5, 1, 1)]
                         ),
                         stl.Formula(
-                            stl.EXPR, [agmilp.MILPSignal(lambda x: x - 3, -1, 1)]
+                            stl.EXPR, [agmine.MILPSignal(lambda x: x - 3, -1, 1)]
                         ),
                         stl.Formula(
-                            stl.EXPR, [agmilp.MILPSignal(lambda x: x - 10, 1, 0)]
+                            stl.EXPR, [agmine.MILPSignal(lambda x: x - 10, 1, 0)]
                         ),
                     ],
                 ),

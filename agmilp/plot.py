@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 
 from templogic.stlmilp import stl
-from . import agmilp
+from . import agmine
 
 
 class PlotAssumptionMinining(object):
@@ -39,6 +39,9 @@ class PlotAssumptionMinining(object):
         plt.ion()
         plt.show()
 
+    def pause(self):
+        plt.show(block=True)
+
     def render(self):
         plt.show()
 
@@ -60,7 +63,7 @@ def plot_formula(ax, formula):
 def compute_rectangles(formula):
     if isinstance(formula, stl.STLPred):
         expr = formula.signal
-        if not isinstance(expr, agmilp.MILPSignal):
+        if not isinstance(expr, agmine.MILPSignal):
             raise ValueError(
                 "Expression is not MILPSignal, given {}".format(expr.__class__)
             )

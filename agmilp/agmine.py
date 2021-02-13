@@ -8,7 +8,7 @@ import numpy as np
 
 from templogic.stlmilp.inference import inference, llt
 from templogic.stlmilp import stl, milp_util as milp, stl_milp_encode as stl_milp
-from .system import system as sys, system_milp_encode as milp_encode
+from agmilp.system import system as sys, system_milp_encode as milp_encode
 
 logger = logging.getLogger(__name__)
 

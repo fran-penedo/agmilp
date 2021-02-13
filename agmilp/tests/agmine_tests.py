@@ -9,7 +9,7 @@ import numpy as np
 from templogic.stlmilp import stl
 
 from ..system import system as sys
-from .. import agmilp, plot
+from .. import agmine, plot
 
 FOCUSED = ":" in python_sys.argv[-1]
 
@@ -19,7 +19,7 @@ def integrate_trapez(system, x0, args):
     return np.hstack([x, np.arange(0, args[0] + args[1] / 2, args[1])[None]]).T
 
 
-class TestAGMilp(unittest.TestCase):
+class TestAgmine(unittest.TestCase):
     def setUp(self):
         self.sys = sys.FOSystem(
             -np.identity(2), np.zeros((2, 2)), np.array([1, 1]), dt=1.0
@@ -59,7 +59,7 @@ class TestAGMilp(unittest.TestCase):
 
         self.integrate_control = _integrate_control
 
-    def test_agmilp_simple(self):
+    def test_agmine_simple(self):
         isstate = True
         system_n = 2
         formula = stl.STLOr(
@@ -67,13 +67,13 @@ class TestAGMilp(unittest.TestCase):
                 stl.STLAlways(
                     bounds=[2, 4],
                     arg=stl.STLPred(
-                        agmilp.MILPSignal(lambda x: x - (-4), 1, 0, isstate, system_n)
+                        agmine.MILPSignal(lambda x: x - (-4), 1, 0, isstate, system_n)
                     ),
                 ),
                 stl.STLAlways(
                     bounds=[2, 4],
                     arg=stl.STLPred(
-                        agmilp.MILPSignal(lambda x: x - 4, -1, 0, isstate, system_n)
+                        agmine.MILPSignal(lambda x: x - 4, -1, 0, isstate, system_n)
                     ),
                 ),
             ]
@@ -82,7 +82,7 @@ class TestAGMilp(unittest.TestCase):
         # plotter = plot.PlotAssumptionMinining([[-10, 10], [-10, 10]])
         # plotter.set_interactive()
         plotter = None
-        formula = agmilp.mine_assumptions(
+        formula = agmine.mine_assumptions(
             self.sys,
             self.bounds,
             formula,
@@ -97,7 +97,7 @@ class TestAGMilp(unittest.TestCase):
         print(formula)
 
     @unittest.skipUnless(FOCUSED, "Slow test")
-    def test_agmilp_simple2(self):
+    def test_agmine_simple2(self):
         isstate = True
         system_n = 2
         formula = stl.STLOr(
@@ -105,13 +105,13 @@ class TestAGMilp(unittest.TestCase):
                 stl.STLAlways(
                     bounds=[2, 4],
                     arg=stl.STLPred(
-                        agmilp.MILPSignal(lambda x: x - (-4), 1, 0, isstate, system_n)
+                        agmine.MILPSignal(lambda x: x - (-4), 1, 0, isstate, system_n)
                     ),
                 ),
                 stl.STLAlways(
                     bounds=[2, 4],
                     arg=stl.STLPred(
-                        agmilp.MILPSignal(lambda x: x - 4, -1, 0, isstate, system_n)
+                        agmine.MILPSignal(lambda x: x - 4, -1, 0, isstate, system_n)
                     ),
                 ),
             ]
@@ -120,7 +120,7 @@ class TestAGMilp(unittest.TestCase):
         plotter = plot.PlotAssumptionMinining([[-10, 10], [-10, 10]])
         plotter.set_interactive()
         # plotter = None
-        formula = agmilp.mine_assumptions(
+        formula = agmine.mine_assumptions(
             self.sys2,
             self.bounds,
             formula,
@@ -137,7 +137,7 @@ class TestAGMilp(unittest.TestCase):
         raise Exception()
 
     @unittest.skipUnless(FOCUSED, "Slow test")
-    def test_agmilp_time_variant(self):
+    def test_agmine_time_variant(self):
         isstate = True
         system_n = 2
         formula = stl.Formula(
@@ -149,7 +149,7 @@ class TestAGMilp(unittest.TestCase):
                         stl.Formula(
                             stl.EXPR,
                             [
-                                agmilp.MILPSignal(
+                                agmine.MILPSignal(
                                     lambda x: x - (-4), 1, 0, isstate, system_n
                                 )
                             ],
@@ -163,7 +163,7 @@ class TestAGMilp(unittest.TestCase):
                         stl.Formula(
                             stl.EXPR,
                             [
-                                agmilp.MILPSignal(
+                                agmine.MILPSignal(
                                     lambda x: x - 4, -1, 0, isstate, system_n
                                 )
                             ],
@@ -174,7 +174,7 @@ class TestAGMilp(unittest.TestCase):
             ],
         )
         args = [5.0, self.sys3.dt]
-        formula = agmilp.mine_assumptions(
+        formula = agmine.mine_assumptions(
             self.sys3,
             self.bounds3,
             formula,
