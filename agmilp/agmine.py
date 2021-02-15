@@ -184,7 +184,7 @@ class MILPSignal(stl.Signal):
         isstate = cls.lltsignal_isstate(lltsignal, system_n)
         if not isstate:
             i = i - system_n
-        sig = cls(None, None, i, isstate, system_n, bounds[lltsignal.index])
+        sig = cls(None, None, i, isstate, system_n, list(zip(*bounds))[lltsignal.index])
         sig.f = lltsignal.f
         sig.op = -1 if sig.f([0]) < sig.f([1]) else 1
         return sig
