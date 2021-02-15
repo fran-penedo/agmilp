@@ -1,5 +1,7 @@
 # AGMilp: Assume-Guarantee STL Contract Mining Using MILP
 
+![AGMilp Result](https://franpenedo.com/media/agmilp.png)
+
 ## What is AGMilp
 
 AGMilp is a tool for mining Assume-Guarantee (AG) Signal Temporal Logic (STL) contracts
