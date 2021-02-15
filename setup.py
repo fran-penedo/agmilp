@@ -5,7 +5,7 @@ config = {
     "url": "",
     "author": "Fran Penedo",
     "author_email": "fran@franpenedo.com",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "install_requires": [
         "numpy>=1.20.1",
         "gurobipy>=9.1.1",
