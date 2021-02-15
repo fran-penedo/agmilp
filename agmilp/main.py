@@ -1,8 +1,8 @@
 import argparse
 import importlib
 import sys
-from argparse import Namespace
-from typing import Any, Callable, Optional, Sequence, Tuple
+from typing import Any, Callable, Optional, Sequence
+import logging
 import logging.config
 
 import attr
@@ -15,18 +15,21 @@ from agmilp.plot import PlotAssumptionMinining
 from agmilp.system.system import FOSystem
 
 
+logger = logging.getLogger(__name__)
+
+
 @attr.s(auto_attribs=True)
 class Scenario(object):
-    system: FOSystem
-    bounds: list[list[float]]
-    formula: stl.STLTerm
-    integrate: Callable[[FOSystem, np.ndarray, Any], np.ndarray]
-    args: Sequence[Any]
-    tol_min: float
-    tol_init: float
-    alpha: float
-    num_init_samples: int
-    plotter: Optional[PlotAssumptionMinining]
+    system: Optional[FOSystem] = None
+    bounds: Optional[list[list[float]]] = None
+    formula: Optional[stl.STLTerm] = None
+    integrate: Optional[Callable[[FOSystem, np.ndarray, Any], np.ndarray]] = None
+    args: Optional[Sequence[Any]] = None
+    tol_min: float = 1.0
+    tol_init: float = 2.0
+    alpha: float = 0.5
+    num_init_samples: int = 10
+    plotter: Optional[PlotAssumptionMinining] = None
 
 
 def process_options() -> Scenario:
@@ -34,10 +37,12 @@ def process_options() -> Scenario:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
 
-    parser.add_argument("--tol-min", metavar="t", type=float, default=1.0)
-    parser.add_argument("--tol-init", metavar="t", type=float, default=2.0)
-    parser.add_argument("--alpha", metavar="a", type=float, default=0.5)
-    parser.add_argument("--num-init-samples", metavar="n", type=int, default=10)
+    scenario = Scenario()
+
+    parser.add_argument("--tol-min", metavar="t", type=float)
+    parser.add_argument("--tol-init", metavar="t", type=float)
+    parser.add_argument("--alpha", metavar="a", type=float)
+    parser.add_argument("--num-init-samples", metavar="n", type=int)
     parser.add_argument("--plot", action="store_true", default=False)
     parser.add_argument("--verbose", "-v", action="store_true", default=False)
     parser.add_argument("scenario")
@@ -51,35 +56,36 @@ def process_options() -> Scenario:
         spec = importlib.util.spec_from_file_location("module", options.scenario)
         module = importlib.util.module_from_spec(spec)
         sys.modules["module"] = module
-        spec.loader.exec_module(module)
+        spec.loader.exec_module(module)  # type: ignore # Don't need to handle this
     except Exception as s:
         raise s
 
-    try:
-        system = module.system
-        bounds = module.bounds
-        formula = module.formula
-        integrate = module.integrate
-        args = module.args
-    except Exception as e:
-        raise Exception("Scenario module missing required object", e)
+    for k in vars(scenario).keys():
+        if (value := getattr(module, k, None)) is not None:
+            setattr(scenario, k, value)
+        if (value := getattr(options, k, None)) is not None:
+            setattr(scenario, k, value)
+
+    if any(
+        x is None
+        for x in [
+            scenario.system,
+            scenario.bounds,
+            scenario.formula,
+            scenario.integrate,
+            scenario.args,
+        ]
+    ):
+        raise Exception(f"Scenario module missing required object\n{scenario}")
 
     plotter = None
     if options.plot:
-        plotter = PlotAssumptionMinining(bounds)
+        assert scenario.bounds is not None
+        plotter = PlotAssumptionMinining(list(zip(*scenario.bounds)))
         plotter.set_interactive()
-    scenario = Scenario(
-        system,
-        bounds,
-        formula,
-        integrate,
-        args,
-        options.tol_min,
-        options.tol_init,
-        options.alpha,
-        options.num_init_samples,
-        plotter,
-    )
+    scenario.plotter = plotter
+
+    logger.debug(f"{scenario}")
 
     return scenario
 

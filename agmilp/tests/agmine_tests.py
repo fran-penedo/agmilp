@@ -129,11 +129,11 @@ class TestAgmine(unittest.TestCase):
             tol_min=0.5,
             tol_init=1.0,
             alpha=0.5,
-            num_init_samples=200,
+            num_init_samples=20,
             plotter=plotter,
         )
         print(formula)
-        x = input()
+        plotter.pause()
         raise Exception()
 
     @unittest.skipUnless(FOCUSED, "Slow test")

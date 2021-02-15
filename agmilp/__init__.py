@@ -9,7 +9,7 @@ mpl_logger.setLevel(logging.WARNING)
 import sys
 import os
 
-FOCUSED = os.environ.get("FOCUSED", False)
+FOCUSED = ":" in sys.argv[-1]
 
 LOG_CONFIG = {
     "version": 1,

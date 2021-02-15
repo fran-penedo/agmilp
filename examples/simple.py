@@ -32,3 +32,8 @@ formula = stl.STLOr(
 )
 
 args = [10.0, system.dt]
+
+tol_min = 0.5
+tol_init = 1.0
+alpha = 0.5
+num_init_samples = 200
